@@ -19,7 +19,6 @@ services:
     container_name: www-bubenbox
     networks:
       nginx-network:
-        ipv4_address: 172.17.0.2
     ports:
       - "8080:80"
     restart: unless-stopped
@@ -27,6 +26,3 @@ services:
 networks:
   nginx-network:
     driver: bridge
-    ipam:
-      config:
-        - subnet: 172.17.0.0/24

@@ -1,0 +1,32 @@
+
+version: '3.8'
+services:
+  lbx-proxy:
+    build: ./lbx-proxy
+    container_name: lbx-proxy
+    volumes:
+      - ./lbx-proxy/config/domains.json:/config/domains.json
+      - ./lbx-proxy/letsencrypt:/etc/letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      nginx-network:
+    restart: unless-stopped
+    
+  www-bubenbox:
+    build: ./www1
+    container_name: www-bubenbox
+    networks:
+      nginx-network:
+        ipv4_address: 172.17.0.2
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+
+networks:
+  nginx-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.17.0.0/24

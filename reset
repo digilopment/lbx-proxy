@@ -1,0 +1,4 @@
+docker-compose down
+#sudo rm -rf lbx-proxy/letsencrypt/*
+docker network rm bubenbox_default bubenbox_nginx-network
+docker-compose up --build

@@ -1,0 +1,11 @@
+
+{
+  "meta_data": {
+    "datetime_updated_at": "2024-12-27 20:17:29",
+    "timestamp_updated_at": 1734446549
+  },
+  "domains": {
+    "mara.bikewake.org": "192.168.4.20",
+    "buben.bikewake.org": "172.17.0.2"
+  }
+}

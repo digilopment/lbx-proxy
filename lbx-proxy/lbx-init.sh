@@ -41,7 +41,7 @@ jq -r '.domains | to_entries[] | "\(.key) \(.value)"' "$JSON_FILE" | while read 
 
     # Spustenie Certbot príkazu
     certbot certonly \
-      --staging \
+      #--staging \
       --standalone \
       -w "$CHALLENGE_DIR" \
       -d "$domain" \

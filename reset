@@ -1,5 +1,6 @@
 docker-compose down
-sudo rm -rf lbx-proxy/letsencrypt/*
+sudo rm -rf ./volumes/certbot/*
 docker rm www-bubenbox lbx-proxy
 docker network rm bubenbox_default bubenbox_nginx-network
+#exit
 docker-compose up --build

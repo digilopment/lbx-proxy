@@ -6,7 +6,7 @@ services:
     container_name: lbx-proxy
     volumes:
       - ./lbx-proxy/config/domains.json:/config/domains.json
-      - ./lbx-proxy/letsencrypt:/etc/letsencrypt
+      - ./volumes/certbot:/etc/letsencrypt
     ports:
       - "80:80"
       - "443:443"

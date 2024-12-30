@@ -2,63 +2,118 @@
 
 set -e
 
+# Cesta k JSON súboru s doménami
 JSON_FILE="/config/domains.json"
 NGINX_CONF_DIR="/etc/nginx/conf.d"
-TEMPLATE="/etc/nginx/templates/default.conf.template"
+CERTBOT_CONTAINER="certbot"
+CHALLENGE_DIR="/var/www/certbot"
+ENVIRONMENT="devel" # Nastav na "devel" pre mkcert
 
-# Check if JSON file exists
+# Skontrolovať, či JSON súbor existuje
 if [[ ! -f $JSON_FILE ]]; then
-  echo "JSON file not found at $JSON_FILE"
-  exit 1
+  echo "JSON file not found: $JSON_FILE"
+  #exit 1
 fi
 
-# Parse JSON and create Nginx configuration
-jq -r '.domains | to_entries[] | "\(.key) \(.value)"' $JSON_FILE | while read -r domain ip; do
-  CERT_PATH="/etc/letsencrypt/live/$domain/fullchain.pem"
-  KEY_PATH="/etc/letsencrypt/live/$domain/privkey.pem"
+# Vymazať starý súbor default.conf
+DEFAULT_CONF="${NGINX_CONF_DIR}/default.conf"
+> "$DEFAULT_CONF"
 
-  # Check if certificate exists
-  if [[ ! -f $CERT_PATH || ! -f $KEY_PATH ]]; then
-    echo "Certificate not found for $domain. Generating self-signed certificate."
-    mkdir -p "/etc/letsencrypt/live/$domain"
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-      -keyout "/etc/letsencrypt/live/$domain/privkey.pem" \
-      -out "/etc/letsencrypt/live/$domain/fullchain.pem" \
-      -subj "/CN=$domain"
-  fi
+# Parsovanie JSON a generovanie certifikátov pre každú doménu
+jq -r '.domains | to_entries[] | "\(.key) \(.value)"' "$JSON_FILE" | while read -r domain ip_address; do
+  echo "Spracovanie domény $domain s IP adresou $ip_address..."
 
-  # Create Nginx configuration
-  conf_file="${NGINX_CONF_DIR}/${domain}.conf"
-  echo "Creating config for $domain -> $ip"
-  sed -e "s|{{DOMAIN}}|$domain|g" \
-      -e "s|{{IP_ADDRESS}}|$ip|g" \
-      -e "s|{{CERT_PATH}}|$CERT_PATH|g" \
-      -e "s|{{KEY_PATH}}|$KEY_PATH|g" \
-      $TEMPLATE > $conf_file
-done
+  if [[ $ENVIRONMENT == "devel" ]]; then
+    echo "Generovanie certifikátu pre $domain pomocou mkcert..."
+    
+    # Generovanie certifikátu pomocou mkcert
+    mkdir -p /etc/nginx/ssl
+    mkcert -cert-file /etc/nginx/ssl/$domain.pem \
+           -key-file /etc/nginx/ssl/$domain-key.pem \
+           "$domain"
 
-# Test and reload Nginx
-echo "Testing Nginx configuration..."
-nginx -t || { echo "Nginx configuration test failed!"; exit 1; }
+    CERT_PATH="/etc/nginx/ssl/$domain.pem"
+    KEY_PATH="/etc/nginx/ssl/$domain-key.pem"
 
-#echo "Reloading Nginx..."
-#nginx -s reload
-
-# Generate certificates using certbot
-jq -r '.domains | keys[]' $JSON_FILE | while read -r domain; do
-  CERT_PATH="/etc/letsencrypt/live/$domain/fullchain.pem"
-  
-  if [[ ! -f $CERT_PATH ]]; then
-    echo "Obtaining certificate for $domain"
-    certbot --nginx -d "$domain" --non-interactive --agree-tos --email admin@example.com || {
-      echo "Failed to obtain certificate for $domain. Skipping."
-    }
+    echo "Certifikát bol úspešne vygenerovaný pre $domain pomocou mkcert."
   else
-    echo "Certificate already exists for $domain"
+    echo "Generovanie certifikátu pre $domain pomocou Certbota..."
+
+    # Spustenie Certbot príkazu
+    certbot certonly \
+      --staging \
+      --standalone \
+      -w "$CHALLENGE_DIR" \
+      -d "$domain" \
+      --non-interactive \
+      --agree-tos \
+      --debug-challenges \
+      --email thomas.doubek@gmail.com || echo "Certbot failed, but continuing execution."
+
+    CERT_PATH="/etc/letsencrypt/live/$domain/fullchain.pem"
+    KEY_PATH="/etc/letsencrypt/live/$domain/privkey.pem"
+
+    if [[ $? -ne 0 ]]; then
+      echo "Chyba pri generovaní certifikátu pre $domain pomocou Certbota."
+      continue
+    fi
+
+    echo "Certifikát bol úspešne vygenerovaný pre $domain pomocou Certbota."
   fi
+
+  # Generovanie Nginx konfigurácie
+  cat <<EOL >> "$DEFAULT_CONF"
+server {
+    listen 80;
+    server_name $domain;
+    
+    # Presmerovanie HTTP na HTTPS
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://\$host\$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl http2;
+    server_name $domain;
+    
+    # SSL certifikáty
+    ssl_certificate $CERT_PATH;
+    ssl_certificate_key $KEY_PATH;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers on;
+
+    # Zabezpečené hlavičky
+    add_header X-Content-Type-Options nosniff;
+    add_header X-Frame-Options DENY;
+    add_header X-XSS-Protection "1; mode=block";
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+
+    # Proxy nastavenia
+    location / {
+        proxy_pass http://$ip_address;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+
+    # Let's Encrypt overenie
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+}
+EOL
+  echo "Nginx konfigurácia pre $domain bola úspešne vygenerovaná."
 done
 
-# Start Nginx in the foreground
-echo "Starting Nginx..."
-nginx -g "daemon off;"
-
+# Uistite sa, že container stále beží
+echo "Certbot/mkcert a generovanie Nginx konfigurácie dokončené."
+#sleep 1000
+service nginx stop && service nginx start
+sleep infinity

@@ -7,7 +7,7 @@ JSON_FILE="/config/domains.json"
 NGINX_CONF_DIR="/etc/nginx/conf.d"
 CERTBOT_CONTAINER="certbot"
 CHALLENGE_DIR="/var/www/certbot"
-ENVIRONMENT="devel" # Nastav na "devel" pre mkcert
+ENVIRONMENT="production" # Nastav na "devel" pre mkcert
 
 # Skontrolovať, či JSON súbor existuje
 if [[ ! -f $JSON_FILE ]]; then

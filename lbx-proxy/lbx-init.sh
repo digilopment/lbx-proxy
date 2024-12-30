@@ -35,9 +35,9 @@ server {
     }
 
     # Redirect HTTP na HTTPS (vytvorené neskôr po úspešnom certifikáte)
-    location / {
-        return 301 https://\$host\$request_uri;
-    }
+    #location / {
+    #    return 301 https://\$host\$request_uri;
+    #}
 }
 EOL
 
@@ -61,10 +61,12 @@ EOL
     echo "Certifikát bol úspešne vygenerovaný pre $domain pomocou mkcert."
   else
     echo "Generovanie certifikátu pre $domain pomocou Certbota..."
-
+    
+    #sleep 100000000
     # Spustenie Certbot príkazu
     certbot certonly \
       --standalone \
+      --http-01-port 8080 \
       -w "$CHALLENGE_DIR" \
       -d "$domain" \
       --non-interactive \
@@ -116,7 +118,6 @@ server {
     }
 }
 EOL
-
   echo "Nginx konfigurácia pre HTTPS (port 443) bola úspešne vygenerovaná."
 
   # Reštartovanie Nginxu pre aktiváciu HTTPS

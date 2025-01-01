@@ -5,9 +5,7 @@ set -e
 # Cesta k JSON súboru s doménami
 JSON_FILE="/config/domains.json"
 NGINX_CONF_DIR="/etc/nginx/conf.d"
-CERTBOT_CONTAINER="certbot"
 CHALLENGE_DIR="/var/www/certbot"
-ENVIRONMENT="production" # Nastav na "devel" pre mkcert
 
 # Skontrolovať, či JSON súbor existuje
 if [[ ! -f $JSON_FILE ]]; then
@@ -32,6 +30,7 @@ server {
     # Let's Encrypt overenie
     location /.well-known/acme-challenge/ {
         root $CHALLENGE_DIR;
+        allow all;
     }
 
     # Redirect HTTP na HTTPS (vytvorené neskôr po úspešnom certifikáte)
@@ -46,7 +45,7 @@ EOL
   # Reštartovanie Nginxu pre povolenie HTTP prístupu
   service nginx stop && service nginx start
 
-  if [[ $ENVIRONMENT == "devel" ]]; then
+  if [[ $CERTBOT_ENVIRONMENT == "devel" ]]; then
     echo "Generovanie certifikátu pre $domain pomocou mkcert..."
 
     # Generovanie certifikátu pomocou mkcert
@@ -62,16 +61,13 @@ EOL
   else
     echo "Generovanie certifikátu pre $domain pomocou Certbota..."
     
-    #sleep 100000000
-    # Spustenie Certbot príkazu
     certbot certonly \
-      --standalone \
-      --http-01-port 8080 \
+      --nginx \
       -w "$CHALLENGE_DIR" \
       -d "$domain" \
       --non-interactive \
       --agree-tos \
-      --email thomas.doubek@gmail.com
+      --email "$CERTBOT_EMAIL"
 
     if [[ $? -ne 0 ]]; then
       echo "Chyba pri generovaní certifikátu pre $domain pomocou Certbota."
@@ -115,6 +111,7 @@ server {
     # Let's Encrypt overenie
     location /.well-known/acme-challenge/ {
         root $CHALLENGE_DIR;
+        allow all;
     }
 }
 EOL

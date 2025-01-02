@@ -1,2 +1,2 @@
-lbx-proxy/letsencrypt/*
+.env
 volumes/*

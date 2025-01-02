@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cp env .env
+
 # Bring down the Docker Compose services
 docker-compose down
 

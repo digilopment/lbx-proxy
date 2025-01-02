@@ -2,27 +2,30 @@
 version: '3.8'
 services:
   lbx-proxy:
-    build: ./lbx-proxy
+    build: ./images/lbx-proxy
     container_name: lbx-proxy
     volumes:
-      - ./lbx-proxy/config/domains.json:/config/domains.json
-      - ./lbx-proxy/letsencrypt:/etc/letsencrypt
+      - ./images/lbx-proxy/config/domains.json:/config/domains.json
+      - ./volumes/certbot:/etc/letsencrypt
     ports:
       - "80:80"
       - "443:443"
     networks:
-      nginx-network:
+      lbx-network:
+    environment:
+      CERTBOT_ENVIRONMENT: "${CERTBOT_ENVIRONMENT}"
+      CERTBOT_EMAIL: "${CERTBOT_EMAIL}"
     restart: unless-stopped
     
   www-bubenbox:
-    build: ./www1
+    build: ./images/www1
     container_name: www-bubenbox
     networks:
-      nginx-network:
+      lbx-network:
     ports:
       - "8080:80"
     restart: unless-stopped
 
 networks:
-  nginx-network:
+  lbx-network:
     driver: bridge

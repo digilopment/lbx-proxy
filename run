@@ -1,0 +1,37 @@
+#!/bin/bash
+
+# Bring down the Docker Compose services
+docker-compose down
+
+# Remove certbot volume contents
+sudo rm -rf ./volumes/certbot/*
+
+# Remove specific containers
+docker rm www-bubenbox lbx-proxy
+
+# Function to remove a network if it exists
+remove_network_if_exists() {
+    local network_name=$1
+    if docker network ls --format '{{.Name}}' | grep -q "^${network_name}$"; then
+        echo "Removing network: ${network_name}"
+        docker network rm "${network_name}"
+    else
+        echo "Network ${network_name} does not exist, skipping."
+    fi
+}
+
+# Remove networks only if they exist
+remove_network_if_exists bubenbox_default
+remove_network_if_exists bubenbox_nginx-network
+remove_network_if_exists nginx-network
+remove_network_if_exists lbx-network
+
+# Conditional block
+if [ "$1" == "remove" ]; then
+    echo "Remove flag detected, exiting script."
+    exit 0
+fi
+
+# Bring up the services with a rebuild
+docker-compose up --build
+

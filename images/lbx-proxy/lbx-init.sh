@@ -19,6 +19,17 @@ DEFAULT_CONF="${NGINX_CONF_DIR}/default.conf"
 
 # Parsovanie JSON a generovanie certifikátov pre každú doménu
 jq -r '.domains | to_entries[] | "\(.key) \(.value)"' "$JSON_FILE" | while read -r domain ip_address; do
+
+if [ "$CERTBOT_ENVIRONMENT" == "auto" ]; then
+    if [[ "$(host "$domain")" != *"127.0.0.1"* && "$(host "$domain")" != *"localhost"* ]]; then
+        CERTBOT_ENVIRONMENT="production"
+    else
+        CERTBOT_ENVIRONMENT="devel"
+    fi
+fi
+
+echo "CERTBOT_ENVIRONMENT is set to: $CERTBOT_ENVIRONMENT"
+
   echo "Spracovanie domény $domain s IP adresou $ip_address..."
 
   # Krok 1: Generovanie Nginx konfigurácie pre HTTP (port 80)

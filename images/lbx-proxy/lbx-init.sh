@@ -67,7 +67,8 @@ EOL
 
     CERT_PATH="/etc/nginx/ssl/$domain.pem"
     KEY_PATH="/etc/nginx/ssl/$domain-key.pem"
-
+    
+    mkcert -install
     echo "Certifikát bol úspešne vygenerovaný pre $domain pomocou mkcert."
   else
     echo "Generovanie certifikátu pre $domain pomocou Certbota..."

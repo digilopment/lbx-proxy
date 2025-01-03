@@ -1,1 +1,40 @@
-docker exec -it lbx-proxy bash
+#!/bin/bash
+
+# List all available containers
+containers=($(docker ps --format "{{.Names}}"))
+
+# Check if there are any running containers
+if [ ${#containers[@]} -eq 0 ]; then
+  echo "No running containers found."
+  exit 1
+fi
+
+# Display the list of containers
+echo "Available containers:"
+for i in "${!containers[@]}"; do
+  echo "$((i + 1)). ${containers[i]}"
+done
+
+# Prompt user to choose a container
+read -p "Choose a container to access (1-${#containers[@]}): " choice
+
+# Validate the user's choice
+if ! [[ "$choice" =~ ^[0-9]+$ ]] || [ "$choice" -lt 1 ] || [ "$choice" -gt ${#containers[@]} ]; then
+  echo "Invalid choice. Exiting."
+  exit 1
+fi
+
+# Get the chosen container name
+container_name="${containers[$((choice - 1))]}"
+
+# Prompt user to choose bash or sh
+read -p "Enter shell to use (bash/sh) [default: bash]: " shell_choice
+shell_choice=${shell_choice:-bash}
+
+# Execute the shell inside the chosen container
+if [[ "$shell_choice" == "bash" || "$shell_choice" == "sh" ]]; then
+  docker exec -it "$container_name" "$shell_choice"
+else
+  echo "Invalid shell choice. Exiting."
+  exit 1
+fi

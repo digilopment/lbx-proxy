@@ -8,3 +8,5 @@
 CERTBOT_ENVIRONMENT=auto 
 
 CERTBOT_EMAIL=digilopment@gmail.com
+
+PROJECT_NAME=lbx
